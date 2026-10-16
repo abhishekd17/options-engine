@@ -1,0 +1,57 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build-test:
+    name: ${{ matrix.compiler }} / ${{ matrix.preset }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gcc, clang]
+        preset: [release, asan]
+        include:
+          - compiler: gcc
+            cc: gcc
+            cxx: g++
+          - compiler: clang
+            cc: clang
+            cxx: clang++
+    env:
+      CC: ${{ matrix.cc }}
+      CXX: ${{ matrix.cxx }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ninja-build cmake
+          cmake --version
+          ${CXX} --version
+      # Newer kernels use more mmap entropy than older sanitizer runtimes expect.
+      - name: Reduce ASLR entropy for sanitizers
+        if: matrix.preset == 'asan'
+        run: sudo sysctl -w vm.mmap_rnd_bits=28
+      # Cache the FetchContent downloads so jobs do not re-fetch GoogleTest,
+      # Benchmark and nlohmann/json. The key changes whenever the pins do.
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: build/${{ matrix.preset }}/_deps
+          key: deps-${{ runner.os }}-${{ matrix.compiler }}-${{ matrix.preset }}-${{ hashFiles('cmake/Dependencies.cmake') }}
+      - name: Configure
+        run: cmake --preset ${{ matrix.preset }}
+      - name: Build
+        run: cmake --build --preset ${{ matrix.preset }}
+      # Shows which SIMD backend this job compiled (avx2+fma or scalar).
+      - name: Show build info
+        run: ./build/${{ matrix.preset }}/tools/opt_info
+      - name: Test
+        run: ctest --preset ${{ matrix.preset }}

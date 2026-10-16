@@ -2,3 +2,4 @@ build/
 .agents/
 .cache/
 data/raw/
+data/deribit/
