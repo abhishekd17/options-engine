@@ -21,7 +21,7 @@ opteng_add_test_exe(
   core/version_test.cpp)
 target_link_libraries(opt_core_tests PRIVATE opt::core opt_tool_args)
 
-opteng_add_test_exe(opt_pricing_tests pricing/black_scholes_test.cpp)
+opteng_add_test_exe(opt_pricing_tests pricing/black_scholes_test.cpp pricing/implied_vol_test.cpp)
 target_link_libraries(opt_pricing_tests PRIVATE opt::pricing)
 
 add_test(NAME opt_info.runs COMMAND opt_info)
