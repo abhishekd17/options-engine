@@ -26,12 +26,11 @@ TEST(Normal, KnownValues) {
 }
 
 // Design 5.8 item 10 asks for |N(N^{-1}(p)) - p| <= (1e-14 + 4 x^2 2^-52) p
-// on (1e-300, 1 - 1e-16), x = N^{-1}(p). Measured: AS241 evaluated in double
-// has up to about 2.8 ulp relative error in x (checked against mpmath, see
-// docs/accuracy.md), which the tail amplifies by x^2, and norm_cdf adds about
-// 1 x^2 ulp; the sum reaches about 4.06 x^2 ulp, just over 4. The coefficient
-// is therefore 6 (recorded with the measurement in docs/accuracy.md), and the
-// test prints the measured coefficient so the margin stays visible.
+// on (1e-300, 1 - 1e-16), x = N^{-1}(p). In the lower tail AS241's few-ulp
+// relative error in x is amplified by x^2, and norm_cdf adds about x^2 ulp
+// of its own; the measured coefficient of x^2 eps is 4.01, just over 4. The
+// coefficient is therefore 6 (reason and measurement in docs/accuracy.md),
+// and the test prints the measured coefficient so the margin stays visible.
 constexpr double kTailCoefficient = 6.0;
 
 double check_round_trip(double p, double& worst_ratio, double& worst_coeff) {

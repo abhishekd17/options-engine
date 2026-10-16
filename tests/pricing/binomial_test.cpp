@@ -8,6 +8,7 @@
 #include <array>
 #include <bit>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <stdexcept>
@@ -68,7 +69,7 @@ std::vector<GridPoint> american_grid() {
 constexpr int kGridSteps = 200;
 
 TEST(Crr, AmericanPutAtLeastEuropean) {
-  std::vector<double> ws(kGridSteps + 1);
+  std::vector<double> ws(static_cast<std::size_t>(kGridSteps) + 1);
   double max_premium = 0.0;
   for (const GridPoint& p : american_grid()) {
     const double r = -0.02 + 0.17 * p.u_rate;  // [-0.02, 0.15]
@@ -87,7 +88,7 @@ TEST(Crr, AmericanPutAtLeastEuropean) {
 }
 
 TEST(Crr, AmericanCallWithoutDividendEqualsEuropeanBitwise) {
-  std::vector<double> ws(kGridSteps + 1);
+  std::vector<double> ws(static_cast<std::size_t>(kGridSteps) + 1);
   for (const GridPoint& p : american_grid()) {
     const double r = 0.01 + 0.14 * p.u_rate;  // [0.01, 0.15]
     const OptionSpec s = spec(OptionType::Call, 100, p.strike, p.time, r, 0.0, p.vol);
@@ -101,7 +102,7 @@ TEST(Crr, AmericanCallWithoutDividendEqualsEuropeanBitwise) {
 }
 
 TEST(Crr, AmericanCallWithDividendAtLeastEuropean) {
-  std::vector<double> ws(kGridSteps + 1);
+  std::vector<double> ws(static_cast<std::size_t>(kGridSteps) + 1);
   double max_premium = 0.0;
   for (const GridPoint& p : american_grid()) {
     const double r = 0.01 + 0.14 * p.u_rate;   // [0.01, 0.15]
@@ -135,7 +136,7 @@ TEST(Crr, ConvergesToBsmAtTheMoney) {
                                          {OptionType::Put, 0.10, 0.03, 0.30, 2.0},
                                          {OptionType::Call, 0.0, 0.0, 0.80, 0.25}}};
   constexpr std::array<int, 4> kSteps = {100, 400, 1600, 6400};
-  std::vector<double> ws(kSteps.back() + 1);
+  std::vector<double> ws(static_cast<std::size_t>(kSteps.back()) + 1);
   double worst_ratio = 0.0;
   for (const Set& set : kSets) {
     const OptionSpec s = spec(set.type, 100, 100, set.t, set.r, set.q, set.vol);
