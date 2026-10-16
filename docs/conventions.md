@@ -32,6 +32,10 @@ theta = r V - D F phi(d1) sigma / (2 sqrt T) with r = -ln(D) / T.
 - Numerical failures that depend on the input data are returned as a status enum and never
   thrown: `IvStatus` for implied vol, `TreeStatus` for the binomial tree. The value is NaN for
   every non-Ok status except `IvStatus::NotConverged`, which carries the best iterate.
+  `TreeStatus::VolTooHigh` covers calls with sigma sqrt(T) above about 30, where node spots
+  would leave the e^{+-700} range the tree clamps to. Default-constructed result structs
+  (`IvResult`, `TreeResult`, `McResult`) hold NaN values and a failure status, never
+  indeterminate values.
 - `validate(const OptionSpec&)` is the boundary check for untrusted input. The pricers assert
   it in debug builds.
 - The library never prints. Tools print results to stdout, errors to stderr, and exit 0 (ok),

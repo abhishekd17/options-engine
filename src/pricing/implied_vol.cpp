@@ -187,8 +187,9 @@ IvResult implied_vol_black(OptionType type, double price, double forward, double
         // Converged. Checked before the bracket test: a step below half an
         // ulp of vol rounds to newton == vol == lo (or hi), which the strict
         // bracket test would reject, sending the solver into dozens of
-        // bisection steps across a wide bracket for nothing.
-        return IvResult{newton, IvStatus::Ok, iter};
+        // bisection steps across a wide bracket for nothing. Clamped so a
+        // step just past the bracket (e.g. below lo == 0) never escapes it.
+        return IvResult{std::clamp(newton, lo, hi), IvStatus::Ok, iter};
       }
       const bool inside = newton > lo && newton < hi;
       const bool halving = std::abs(gv) <= 0.5 * abs_g_prev2;

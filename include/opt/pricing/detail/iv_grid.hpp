@@ -78,7 +78,8 @@ void for_each_iv_grid_point(Fn&& fn) {
               const double scale =
                   disc * (forward * norm_cdf(w * d1) + s.strike * norm_cdf(w * d2));
               const double vega = disc * forward * norm_pdf(d1) * std::sqrt(time);
-              const bool well = vega >= kIvWellVegaRatio * scale && price / (disc * forward) >= 1e-12;
+              const bool well =
+                  vega >= kIvWellVegaRatio * scale && price / (disc * forward) >= 1e-12;
               fn(IvGridPoint{s, z, price, scale, vega, well});
             }
           }

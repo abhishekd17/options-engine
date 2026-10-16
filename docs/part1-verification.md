@@ -29,103 +29,106 @@ Output:
 ```
 release build_rc=0 warnings=0 errors=0
 release ctest_rc=0
-100% tests passed out of 73
-Total Test time (real) =   5.48 sec
+100% tests passed out of 76
+Total Test time (real) =   5.73 sec
 asan build_rc=0 warnings=0 errors=0
 asan ctest_rc=0
-100% tests passed out of 73
-Total Test time (real) =   7.82 sec
+100% tests passed out of 76
+Total Test time (real) =  10.18 sec
 debug build_rc=0 warnings=0 errors=0
 debug ctest_rc=0
-100% tests passed out of 73
-Total Test time (real) =   7.83 sec
+100% tests passed out of 76
+Total Test time (real) =  12.14 sec
 ```
 
-The asan run takes 7.82 s, well inside the 3-minute budget of design section 3. Configure logs
+The asan run takes 10.18 s, well inside the 3-minute budget of design section 3. Configure logs
 confirm the presets: `/tmp/oe-asan.log` has `-- opteng: sanitizer = asan` (ASan + UBSan), and
 `/tmp/oe-release.log` has `-- opteng: native tuning = -mcpu=native (arm64, AppleClang)`.
 `otool -L build/asan/tests/opt_pricing_tests` lists `libclang_rt.asan_osx_dynamic.dylib`. The
 clean release configure downloaded GoogleTest, Benchmark and nlohmann/json and accepted all three
 pinned SHA-256 hashes (a wrong hash fails configure).
 
-The 73 ctest entries: 34 in `opt_core_tests`, 36 in `opt_pricing_tests`, `opt_info.runs`, and
+The 76 ctest entries: 34 in `opt_core_tests`, 39 in `opt_pricing_tests`, `opt_info.runs`, and
 `bench.smoke.iv_bench` and `bench.smoke.tree_mc_bench` (each benchmark run once with
 `--benchmark_min_time=1x`). The asan list, from `grep -E "Test +#" /tmp/oe-asan-test.log`:
 
 ```
- 1/73 Test #1: Rng.SplitMix64MatchesReference ....................................... Passed 0.02 sec
- 2/73 Test #2: Rng.Xoshiro256ppMatchesReference ..................................... Passed 0.02 sec
- 3/73 Test #3: Rng.StreamsDiffer .................................................... Passed 0.02 sec
- 4/73 Test #4: Rng.Uniform01EndsAreStrictlyInside ................................... Passed 0.02 sec
- 5/73 Test #5: Rng.Uniform01MomentsWithinFiveStandardErrors ......................... Passed 0.02 sec
- 6/73 Test #6: Rng.WorksWithStandardDistributions ................................... Passed 0.02 sec
- 7/73 Test #7: Normal.KnownValues ................................................... Passed 0.02 sec
- 8/73 Test #8: Normal.InverseCdfRoundTrip ........................................... Passed 0.04 sec
- 9/73 Test #9: Normal.InverseCdfIsAntisymmetric ..................................... Passed 0.02 sec
-10/73 Test #10: Normal.CdfSymmetry ................................................... Passed 0.02 sec
-11/73 Test #11: Normal.PdfMatchesDerivativeOfCdf ..................................... Passed 0.02 sec
-12/73 Test #12: NeumaierSum.StartsAtZeroOrInitial .................................... Passed 0.02 sec
-13/73 Test #13: NeumaierSum.RecoversBitsLostToLargeTerms ............................. Passed 0.02 sec
-14/73 Test #14: NeumaierSum.ManySmallTermsAreExactToOneUlp ........................... Passed 0.03 sec
-15/73 Test #15: LatencyHistogram.BucketsCoverEveryValueContiguously .................. Passed 0.02 sec
-16/73 Test #16: LatencyHistogram.SmallValuesAreExact ................................. Passed 0.02 sec
-17/73 Test #17: LatencyHistogram.BucketWidthIsBoundedRelativeToValue ................. Passed 0.02 sec
-18/73 Test #18: LatencyHistogram.EmptyReportsZeros ................................... Passed 0.02 sec
-19/73 Test #19: LatencyHistogram.OneValue ............................................ Passed 0.02 sec
-20/73 Test #20: LatencyHistogram.NearestRankWithoutRoundingSurprises ................. Passed 0.02 sec
-21/73 Test #21: LatencyHistogram.PercentilesNeverUnderReportAndStayWithinPrecision ... Passed 0.03 sec
-22/73 Test #22: LatencyHistogram.RecordNEqualsRepeatedRecord ......................... Passed 0.02 sec
-23/73 Test #23: LatencyHistogram.MergeEqualsRecordingEverything ...................... Passed 0.02 sec
-24/73 Test #24: LatencyHistogram.ExtremeValues ....................................... Passed 0.02 sec
-25/73 Test #25: LatencyHistogram.ForEachBucketVisitsNonEmptyBucketsInOrder ........... Passed 0.02 sec
-26/73 Test #26: Args.ParseDoubleAcceptsWholeFiniteInRange ............................ Passed 0.02 sec
-27/73 Test #27: Args.ParseDoubleRejectsBadInput ...................................... Passed 0.02 sec
-28/73 Test #28: Args.ParseU64 ........................................................ Passed 0.02 sec
-29/73 Test #29: Args.IteratorWalksFlagsAndValues ..................................... Passed 0.02 sec
-30/73 Test #30: Args.MissingValueThrows .............................................. Passed 0.02 sec
-31/73 Test #31: Args.NoArguments ..................................................... Passed 0.02 sec
-32/73 Test #32: Version.IsSemver ..................................................... Passed 0.02 sec
-33/73 Test #33: Version.SimdBackendMatchesWidth ...................................... Passed 0.02 sec
-34/73 Test #34: Version.CompilerIdIsNonEmpty ......................................... Passed 0.02 sec
-35/73 Test #35: BlackScholes.PutCallParity ........................................... Passed 0.02 sec
-36/73 Test #36: BlackScholes.HullExample15_6 ......................................... Passed 0.02 sec
-37/73 Test #37: BlackScholes.GreeksMatchFiniteDifferences ............................ Passed 0.02 sec
-38/73 Test #38: BlackScholes.Black76MatchesBsmAndFiniteDifferences ................... Passed 0.02 sec
-39/73 Test #39: BlackScholes.ZeroTimeGivesIntrinsic .................................. Passed 0.02 sec
-40/73 Test #40: BlackScholes.ZeroVolLimits ........................................... Passed 0.02 sec
-41/73 Test #41: BlackScholes.ExtremeMoneynessIsFiniteAndHitsLimits ................... Passed 0.02 sec
-42/73 Test #42: BlackScholes.PriceWithinNoArbitrageBounds ............................ Passed 0.02 sec
-43/73 Test #43: BlackScholes.ValidateReportsFirstProblem ............................. Passed 0.02 sec
-44/73 Test #44: ImpliedVol.HullSection15_11 .......................................... Passed 0.02 sec
-45/73 Test #45: ImpliedVol.RoundTripGrid ............................................. Passed 0.05 sec
-46/73 Test #46: ImpliedVol.BoundsAndInvalidInputs .................................... Passed 0.02 sec
-47/73 Test #47: ImpliedVol.DeepInTheMoneyCallSolvedViaPut ............................ Passed 0.02 sec
-48/73 Test #48: ImpliedVol.OneHourExpiry ............................................. Passed 0.02 sec
-49/73 Test #49: ImpliedVol.HighVolInsideMaxVol ....................................... Passed 0.02 sec
-50/73 Test #50: ImpliedVol.VolAboveMaxVol ............................................ Passed 0.02 sec
-51/73 Test #51: ImpliedVol.ExtremelyLowVega .......................................... Passed 0.02 sec
-52/73 Test #52: ImpliedVol.NotConvergedWithTinyIterationBudget ....................... Passed 0.02 sec
-53/73 Test #53: Crr.HullExample21_1AmericanPut ....................................... Passed 0.02 sec
-54/73 Test #54: Crr.AmericanPutAtLeastEuropean ....................................... Passed 0.02 sec
-55/73 Test #55: Crr.AmericanCallWithoutDividendEqualsEuropeanBitwise ................. Passed 0.03 sec
-56/73 Test #56: Crr.AmericanCallWithDividendAtLeastEuropean .......................... Passed 0.02 sec
-57/73 Test #57: Crr.DeepInTheMoneyAmericanPutIsExercisedImmediately .................. Passed 0.02 sec
-58/73 Test #58: Crr.ConvergesToBsmAtTheMoney ......................................... Passed 0.08 sec
-59/73 Test #59: Crr.NonAtmErrorBounded ............................................... Passed 0.14 sec
-60/73 Test #60: Crr.ArgumentValidation ............................................... Passed 0.02 sec
-61/73 Test #61: Crr.ProbabilityOutOfRange ............................................ Passed 0.02 sec
-62/73 Test #62: Crr.Limits ........................................................... Passed 0.02 sec
-63/73 Test #63: Crr.WorkspaceAndAllocatingOverloadsAgree ............................. Passed 0.02 sec
-64/73 Test #64: MonteCarlo.WithinFourStandardErrorsOfBsm ............................. Passed 0.08 sec
-65/73 Test #65: MonteCarlo.CoverageOverSeeds ......................................... Passed 0.04 sec
-66/73 Test #66: MonteCarlo.StandardErrorShrinksAsOneOverSqrtN ........................ Passed 0.02 sec
-67/73 Test #67: MonteCarlo.EachVarianceReductionHelps ................................ Passed 0.03 sec
-68/73 Test #68: MonteCarlo.DeterministicForSeed ...................................... Passed 0.02 sec
-69/73 Test #69: MonteCarlo.DegenerateInputs .......................................... Passed 0.02 sec
-70/73 Test #70: MonteCarlo.InvalidConfigThrows ....................................... Passed 0.02 sec
-71/73 Test #71: opt_info.runs ........................................................ Passed 0.78 sec
-72/73 Test #72: bench.smoke.iv_bench ................................................. Passed 1.92 sec
-73/73 Test #73: bench.smoke.tree_mc_bench ............................................ Passed 1.86 sec
+ 1/76 Test #1: Rng.SplitMix64MatchesReference ....................................... Passed 0.02 sec
+ 2/76 Test #2: Rng.Xoshiro256ppMatchesReference ..................................... Passed 0.02 sec
+ 3/76 Test #3: Rng.StreamsDiffer .................................................... Passed 0.02 sec
+ 4/76 Test #4: Rng.Uniform01EndsAreStrictlyInside ................................... Passed 0.02 sec
+ 5/76 Test #5: Rng.Uniform01MomentsWithinFiveStandardErrors ......................... Passed 0.02 sec
+ 6/76 Test #6: Rng.WorksWithStandardDistributions ................................... Passed 0.02 sec
+ 7/76 Test #7: Normal.KnownValues ................................................... Passed 0.02 sec
+ 8/76 Test #8: Normal.InverseCdfRoundTrip ........................................... Passed 0.04 sec
+ 9/76 Test #9: Normal.InverseCdfIsAntisymmetric ..................................... Passed 0.02 sec
+10/76 Test #10: Normal.CdfSymmetry ................................................... Passed 0.02 sec
+11/76 Test #11: Normal.PdfMatchesDerivativeOfCdf ..................................... Passed 0.02 sec
+12/76 Test #12: NeumaierSum.StartsAtZeroOrInitial .................................... Passed 0.02 sec
+13/76 Test #13: NeumaierSum.RecoversBitsLostToLargeTerms ............................. Passed 0.02 sec
+14/76 Test #14: NeumaierSum.ManySmallTermsAreExactToOneUlp ........................... Passed 0.02 sec
+15/76 Test #15: LatencyHistogram.BucketsCoverEveryValueContiguously .................. Passed 0.02 sec
+16/76 Test #16: LatencyHistogram.SmallValuesAreExact ................................. Passed 0.02 sec
+17/76 Test #17: LatencyHistogram.BucketWidthIsBoundedRelativeToValue ................. Passed 0.02 sec
+18/76 Test #18: LatencyHistogram.EmptyReportsZeros ................................... Passed 0.02 sec
+19/76 Test #19: LatencyHistogram.OneValue ............................................ Passed 0.02 sec
+20/76 Test #20: LatencyHistogram.NearestRankWithoutRoundingSurprises ................. Passed 0.02 sec
+21/76 Test #21: LatencyHistogram.PercentilesNeverUnderReportAndStayWithinPrecision ... Passed 0.03 sec
+22/76 Test #22: LatencyHistogram.RecordNEqualsRepeatedRecord ......................... Passed 0.02 sec
+23/76 Test #23: LatencyHistogram.MergeEqualsRecordingEverything ...................... Passed 0.02 sec
+24/76 Test #24: LatencyHistogram.ExtremeValues ....................................... Passed 0.02 sec
+25/76 Test #25: LatencyHistogram.ForEachBucketVisitsNonEmptyBucketsInOrder ........... Passed 0.02 sec
+26/76 Test #26: Args.ParseDoubleAcceptsWholeFiniteInRange ............................ Passed 0.02 sec
+27/76 Test #27: Args.ParseDoubleRejectsBadInput ...................................... Passed 0.02 sec
+28/76 Test #28: Args.ParseU64 ........................................................ Passed 0.02 sec
+29/76 Test #29: Args.IteratorWalksFlagsAndValues ..................................... Passed 0.02 sec
+30/76 Test #30: Args.MissingValueThrows .............................................. Passed 0.02 sec
+31/76 Test #31: Args.NoArguments ..................................................... Passed 0.02 sec
+32/76 Test #32: Version.IsSemver ..................................................... Passed 0.02 sec
+33/76 Test #33: Version.SimdBackendMatchesWidth ...................................... Passed 0.02 sec
+34/76 Test #34: Version.CompilerIdIsNonEmpty ......................................... Passed 0.02 sec
+35/76 Test #35: BlackScholes.PutCallParity ........................................... Passed 0.02 sec
+36/76 Test #36: BlackScholes.HullExample15_6 ......................................... Passed 0.02 sec
+37/76 Test #37: BlackScholes.GreeksMatchFiniteDifferences ............................ Passed 0.02 sec
+38/76 Test #38: BlackScholes.Black76MatchesBsmAndFiniteDifferences ................... Passed 0.02 sec
+39/76 Test #39: BlackScholes.ZeroTimeGivesIntrinsic .................................. Passed 0.02 sec
+40/76 Test #40: BlackScholes.ZeroVolLimits ........................................... Passed 0.02 sec
+41/76 Test #41: BlackScholes.ExtremeMoneynessIsFiniteAndHitsLimits ................... Passed 0.02 sec
+42/76 Test #42: BlackScholes.PriceWithinNoArbitrageBounds ............................ Passed 0.02 sec
+43/76 Test #43: BlackScholes.ValidateReportsFirstProblem ............................. Passed 0.02 sec
+44/76 Test #44: ImpliedVol.HullSection15_11 .......................................... Passed 0.02 sec
+45/76 Test #45: ImpliedVol.RoundTripGrid ............................................. Passed 0.05 sec
+46/76 Test #46: ImpliedVol.BoundsAndInvalidInputs .................................... Passed 0.02 sec
+47/76 Test #47: ImpliedVol.DeepInTheMoneyCallSolvedViaPut ............................ Passed 0.02 sec
+48/76 Test #48: ImpliedVol.OneHourExpiry ............................................. Passed 0.02 sec
+49/76 Test #49: ImpliedVol.HighVolInsideMaxVol ....................................... Passed 0.02 sec
+50/76 Test #50: ImpliedVol.VolAboveMaxVol ............................................ Passed 0.02 sec
+51/76 Test #51: ImpliedVol.ExtremelyLowVega .......................................... Passed 0.02 sec
+52/76 Test #52: ImpliedVol.NotConvergedWithTinyIterationBudget ....................... Passed 0.02 sec
+53/76 Test #53: Crr.HullExample21_1AmericanPut ....................................... Passed 0.02 sec
+54/76 Test #54: Crr.AmericanPutAtLeastEuropean ....................................... Passed 0.02 sec
+55/76 Test #55: Crr.AmericanCallWithoutDividendEqualsEuropeanBitwise ................. Passed 0.02 sec
+56/76 Test #56: Crr.AmericanCallWithDividendAtLeastEuropean .......................... Passed 0.02 sec
+57/76 Test #57: Crr.DeepInTheMoneyAmericanPutIsExercisedImmediately .................. Passed 0.02 sec
+58/76 Test #58: Crr.ConvergesToBsmAtTheMoney ......................................... Passed 0.08 sec
+59/76 Test #59: Crr.NonAtmErrorBounded ............................................... Passed 0.14 sec
+60/76 Test #60: Crr.ArgumentValidation ............................................... Passed 0.02 sec
+61/76 Test #61: Crr.ProbabilityOutOfRange ............................................ Passed 0.02 sec
+62/76 Test #62: Crr.Limits ........................................................... Passed 0.02 sec
+63/76 Test #63: Crr.LargeSigmaSqrtTN ................................................. Passed 0.03 sec
+64/76 Test #64: Crr.LargeSigmaSqrtTNVolTooHigh ....................................... Passed 0.02 sec
+65/76 Test #65: Crr.LargeSigmaSqrtTNUnsaturated ...................................... Passed 2.10 sec
+66/76 Test #66: Crr.WorkspaceAndAllocatingOverloadsAgree ............................. Passed 0.02 sec
+67/76 Test #67: MonteCarlo.WithinFourStandardErrorsOfBsm ............................. Passed 0.08 sec
+68/76 Test #68: MonteCarlo.CoverageOverSeeds ......................................... Passed 0.04 sec
+69/76 Test #69: MonteCarlo.StandardErrorShrinksAsOneOverSqrtN ........................ Passed 0.02 sec
+70/76 Test #70: MonteCarlo.EachVarianceReductionHelps ................................ Passed 0.03 sec
+71/76 Test #71: MonteCarlo.DeterministicForSeed ...................................... Passed 0.02 sec
+72/76 Test #72: MonteCarlo.DegenerateInputs .......................................... Passed 0.02 sec
+73/76 Test #73: MonteCarlo.InvalidConfigThrows ....................................... Passed 0.02 sec
+74/76 Test #74: opt_info.runs ........................................................ Passed 0.97 sec
+75/76 Test #75: bench.smoke.iv_bench ................................................. Passed 1.77 sec
+76/76 Test #76: bench.smoke.tree_mc_bench ............................................ Passed 1.92 sec
 ```
 
 ## Build info
@@ -164,6 +167,14 @@ compiler: apple clang 21.0.0
 [measure] CRR ATM put r=0.10 q=0.03 vol=0.30 T=2.00: e(100)=3.862e-02 e(400)=9.664e-03 e(1600)=2.416e-03 e(6400)=6.042e-04 ratios 0.2502 0.2501 0.2500
 [measure] CRR ATM call r=0.00 q=0.00 vol=0.80 T=0.25: e(100)=3.958e-02 e(400)=9.903e-03 e(1600)=2.476e-03 e(6400)=6.191e-04 ratios 0.2502 0.2501 0.2500
 [measure] CRR non-ATM (K=110): max |CRR(N) - BSM| over N in [6400, 6410] = 1.552e-04 (bound 0.2)
+[measure] CRR large extent call vol=16.00 N=2025 sigma*sqrt(T N)=720: tree=100.000000 bsm=100.000000 rel err 1.76e-13, American 100.000000
+[measure] CRR large extent put vol=16.00 N=2025 sigma*sqrt(T N)=720: tree=95.122942 bsm=95.122942 rel err 1.90e-13, American 99.651759
+[measure] CRR large extent call vol=20.00 N=2000 sigma*sqrt(T N)=894: tree=100.000000 bsm=100.000000 rel err 1.96e-13, American 100.000000
+[measure] CRR large extent put vol=20.00 N=2000 sigma*sqrt(T N)=894: tree=95.122942 bsm=95.122942 rel err 1.58e-13, American 99.763915
+[measure] CRR large extent call vol=0.75 N=1000 sigma*sqrt(T N)=24: tree=31.012898 bsm=31.020030 rel err 2.30e-04, American 31.012898
+[measure] CRR large extent put vol=0.75 N=1000 sigma*sqrt(T N)=24: tree=26.135840 bsm=26.142973 rel err 2.73e-04, American 26.716959
+[measure] CRR large extent call vol=3.00 N=62500 sigma*sqrt(T N)=750: tree=86.969381 bsm=86.969646 rel err 3.05e-06
+[measure] CRR large extent put vol=3.00 N=62500 sigma*sqrt(T N)=750: tree=82.092323 bsm=82.092588 rel err 3.23e-06
 [measure] MC call S=100 K=100: mc=10.451113 bsm=10.450584 se=2.758e-03 (err/se = +0.19) beta=2.504
 [measure] MC put S=100 K=110: mc=15.264887 bsm=15.264541 se=2.106e-03 (err/se = +0.16) beta=0.979
 [measure] MC call S=50 K=60: mc=9.950690 bsm=9.949885 se=1.855e-03 (err/se = +0.43) beta=1.086
@@ -187,6 +198,7 @@ How these map to design 5.8:
 | 5 IV edge cases | `ImpliedVol.BoundsAndInvalidInputs` and 6 more | pass |
 | 6 American vs European | `Crr.American*`, `Crr.DeepInTheMoney...` | pass, call equality is bitwise |
 | 7 CRR convergence | `Crr.ConvergesToBsmAtTheMoney`, `Crr.NonAtmErrorBounded` | ratios 0.2500 to 0.2502 (bound 0.30); non-ATM 1.552e-04 (bound 0.2) |
+| 7b CRR large sigma sqrt(T N) | `Crr.LargeSigmaSqrtTN*` | extent 750 call 86.969381 vs BSM 86.969646 (rel 3.05e-06, bound 1e-4); calls past the clamp return VolTooHigh |
 | 8 Monte Carlo | `MonteCarlo.*` | all 5 sets within 0.43 SE; 3 of 50 outside 2 SE; SE ratio 0.4946 |
 | 9 BSM edge values | `BlackScholes.Zero*`, `ExtremeMoneyness...`, `PriceWithin...` | pass |
 | 10 RNG and normal | `Rng.*`, `Normal.*` | pass (AS241 coefficient 6, see below) |
@@ -231,6 +243,62 @@ BM_MonteCarlo/variance_reduction:0_median       17.4 ms         17.4 ms         
 BM_MonteCarlo/variance_reduction:1_median       10.5 ms         10.5 ms            5 paths/s=95.7244M/s std_error=3.33733m
 ```
 
+## Review fixes (iteration 2)
+
+Fixes for `.agents/review/part1.json`. Every number in the sections above comes from the
+iteration-2 clean runs.
+
+1. **CRR terminal-spot underflow (blocking).** Node spots are now S e^{x} with the log-offset x
+   clamped so the spot stays in [e^{-700}, e^{700}], a normal finite double. The terminal layer
+   uses one `exp` per node; each American level starts from one exact `exp` at its first
+   unclamped node and walks up by u^2, with constant clamped spots below and above. Working
+   with the offset (not ln S + x) keeps the root node exactly S, so
+   `Crr.DeepInTheMoneyAmericanPutIsExercisedImmediately` (== 50.0) and the bitwise American =
+   European call test still pass. The clamp is exact for puts and for the low end of a call.
+   For a call whose clamped top nodes could carry weight (share-measure mean of ln(S_T/S) plus
+   8 sd above 700 - ln S), the tree now returns the new `TreeStatus::VolTooHigh` with a NaN
+   price; that needs sigma sqrt(T) above about 30 (a 3000% one-year vol). Without this guard,
+   sigma = 40, N = 2000 gave a call of 6.787815 against BSM 100.
+   The reviewer's exact case, run once in release with a scratch program
+   (`/tmp/oe-spot/spot.cpp`, `crr_price` European call, S = K = 100, T = 1, r = 0.05,
+   N = 1,000,000; 3 min 5 s total):
+   ```
+   vol=0.50 N=1e6 call tree=21.792599 status=0 bsm=21.792604
+   vol=0.75 N=1e6 call tree=31.020023 status=0 bsm=31.020030
+   vol=0.80 N=1e6 call tree=32.820975 status=0 bsm=32.820982
+   ```
+   (before the fix, 0.75 and 0.80 returned 0.000000 with status Ok.) The same scratch program
+   at N = 2000 for sigma in {20, 25, 30, 35, 40, 60}: calls 100.000000 (= BSM) for 20 to 30 and
+   VolTooHigh (nan) for 35 to 60; puts 95.122942 (= BSM) for all.
+   Regression tests inside the asan budget: `Crr.LargeSigmaSqrtTN` (extent 720, where the old
+   start was subnormal, and 894, where it was 0, both European and American, plus an
+   ordinary-range control), `Crr.LargeSigmaSqrtTNUnsaturated` (sigma = 3, N = 62,500, extent
+   750, 2.10 s under asan) and `Crr.LargeSigmaSqrtTNVolTooHigh`.
+   Cost: the N + 1 terminal `exp` calls show at small N. Re-run of the tree benchmark (load
+   average about 9, so noisy):
+   ```
+   caffeinate -i ./build/release/bench/tree_mc_bench --benchmark_filter=Crr --benchmark_repetitions=5 --benchmark_report_aggregates_only=true
+   BM_CrrEuropean/100_median         1041 ns         1040 ns            5 nodes/s=4.85755G/s
+   BM_CrrEuropean/500_median        16287 ns        16255 ns            5 nodes/s=7.70551G/s
+   BM_CrrEuropean/2000_median      241815 ns       241600 ns            5 nodes/s=8.28228G/s
+   BM_CrrEuropean/10000_median    6019872 ns      6015579 ns            5 nodes/s=8.31258G/s
+   BM_CrrAmerican/100_median         3232 ns         3229 ns            5 nodes/s=1.56374G/s
+   BM_CrrAmerican/500_median        81659 ns        81585 ns            5 nodes/s=1.5352G/s
+   BM_CrrAmerican/2000_median     1378600 ns      1377383 ns            5 nodes/s=1.45275G/s
+   BM_CrrAmerican/10000_median   36108369 ns     36076850 ns            5 nodes/s=1.38607G/s
+   ```
+   N = 100 European went from 873 ns to 1041 ns; N >= 2000 is within noise of the earlier run.
+2. **Subnormal precision loss / header comment.** Covered by fix 1: no anchor is ever subnormal.
+   `include/opt/pricing/binomial.hpp` now describes the clamp, where the "about N ulp" bound
+   applies (the American walk from a normal anchor) and when VolTooHigh is returned.
+3. **Result struct defaults.** `IvResult` (NaN, `InvalidInput`, 0 iterations), `TreeResult`
+   (NaN, `InvalidInput`) and `McResult` (NaN price and std_error, 0 paths, beta 0).
+4. **IV converged-step clamp.** The "step below tolerance" exit in `implied_vol.cpp` returns
+   `std::clamp(newton, lo, hi)`. The IV grid numbers are unchanged (max 1.53e-11).
+5. **Line length.** The four lines are wrapped. Check:
+   `awk 'length > 100 {print FILENAME": "FNR": "length}' $(git ls-files '*.cpp' '*.hpp')`
+   prints nothing.
+
 ## Where Part 1 differs from the design, and why
 
 Each change was measured first. None loosens the 1e-10 implied-vol tolerance or edits an
@@ -254,6 +322,9 @@ expected reference value.
   the European limit, which undervalues an in-the-money American put (`Crr.Limits`).
 - **`IvStatus::NotConverged`** returns the best iterate; every other non-Ok status returns NaN
   (the design states both rules in different places).
+- **CRR node spots**: computed per node in log space with a clamp to [e^{-700}, e^{700}] instead
+  of the plan's repeated u^2 multiplication from S d^N, and a new `TreeStatus::VolTooHigh` for
+  calls past the clamp (review fix 1).
 - **MC coverage comment**: the binomial tail P(count > 8) is 3.8e-4, not the design's "~0.2%".
 
 ## Not run

@@ -228,6 +228,78 @@ TEST(Crr, Limits) {
   EXPECT_GT(expect, 120 * std::exp(-r * 25) - 100 * std::exp(-q * 25));  // and at expiry
 }
 
+// Review finding: with sigma sqrt(T N) above about 745 the lowest terminal
+// spot S e^{-N sigma sqrt dt} used to underflow to 0 (and the top to inf), so
+// every node spot built from it was 0 and the tree returned a wrong price with
+// status Ok (sigma = 0.75, T = 1, N = 1e6 gave 0 against BSM 31.02). These
+// cases reach the same regime with a moderate N, to stay inside the asan time
+// budget: sigma sqrt(T N) = 720 (start would be subnormal) and 894 (would be
+// 0). sigma = 0.75, N = 1000 (extent 24) is an ordinary-range control.
+TEST(Crr, LargeSigmaSqrtTN) {
+  struct Case {
+    double vol;
+    int steps;
+  };
+  constexpr std::array<Case, 3> kCases = {{{16.0, 2025}, {20.0, 2000}, {0.75, 1'000}}};
+  for (const Case& c : kCases) {
+    const double extent = c.vol * std::sqrt(static_cast<double>(c.steps));
+    for (const OptionType type : {OptionType::Call, OptionType::Put}) {
+      const OptionSpec s = spec(type, 100, 100, 1.0, 0.05, 0.0, c.vol);
+      const double bsm = opt::bsm_price(s);
+      const double eu = tree(s, Exercise::European, c.steps);
+      const double am = tree(s, Exercise::American, c.steps);
+      ASSERT_TRUE(std::isfinite(eu));
+      ASSERT_TRUE(std::isfinite(am));
+      const double rel = std::abs(eu - bsm) / bsm;
+      std::printf("[measure] CRR large extent %s vol=%.2f N=%d sigma*sqrt(T N)=%.0f: "
+                  "tree=%.6f bsm=%.6f rel err %.2e, American %.6f\n",
+                  type == OptionType::Call ? "call" : "put", c.vol, c.steps, extent, eu, bsm,
+                  rel, am);
+      EXPECT_LE(rel, 1e-2);
+      EXPECT_GE(am, eu);
+      EXPECT_LE(am, 100.0 * (1 + 1e-10));  // a call is bounded by S, a put by K (both 100)
+    }
+  }
+}
+
+// sigma sqrt(T) = 40: with N = 2000 the call's top nodes would be clamped
+// while carrying weight (the unguarded tree gave 6.79 against BSM 100), so
+// the call reports VolTooHigh. The put is exact under the clamp. With
+// N = 100 the top node is e^{400} S, nothing is clamped and the call is Ok.
+TEST(Crr, LargeSigmaSqrtTNVolTooHigh) {
+  for (const Exercise e : {Exercise::European, Exercise::American}) {
+    const OptionSpec call = spec(OptionType::Call, 100, 100, 1.0, 0.05, 0.0, 40.0);
+    const auto r = opt::crr_price(call, e, 2000);
+    EXPECT_EQ(r.status, TreeStatus::VolTooHigh);
+    EXPECT_TRUE(std::isnan(r.price));
+    EXPECT_NEAR(tree(call, e, 100), opt::bsm_price(call), 1e-9);
+    const OptionSpec put = spec(OptionType::Put, 100, 100, 1.0, 0.05, 0.0, 40.0);
+    EXPECT_LE(tree(put, e, 2000), 100.0);
+  }
+  const OptionSpec put = spec(OptionType::Put, 100, 100, 1.0, 0.05, 0.0, 40.0);
+  EXPECT_NEAR(tree(put, Exercise::European, 2000), opt::bsm_price(put), 1e-9);
+}
+
+// The cases above saturate (call = S, put = K e^{-rT}). This one does not:
+// sigma = 3, T = 1, N = 62,500 gives sigma sqrt(T N) = 750, where the old
+// bottom spot S e^{-750} was exactly 0, with a call worth 86.6, not S.
+// European only: one O(N^2) pass is 2e9 node updates (about 0.25 s release).
+TEST(Crr, LargeSigmaSqrtTNUnsaturated) {
+  constexpr int kSteps = 62'500;
+  std::vector<double> ws(static_cast<std::size_t>(kSteps) + 1);
+  for (const OptionType type : {OptionType::Call, OptionType::Put}) {
+    const OptionSpec s = spec(type, 100, 100, 1.0, 0.05, 0.0, 3.0);
+    const double bsm = opt::bsm_price(s);
+    const auto r = opt::crr_price(s, Exercise::European, kSteps, ws);
+    ASSERT_EQ(r.status, TreeStatus::Ok);
+    const double rel = std::abs(r.price - bsm) / bsm;
+    std::printf("[measure] CRR large extent %s vol=3.00 N=%d sigma*sqrt(T N)=750: tree=%.6f "
+                "bsm=%.6f rel err %.2e\n",
+                type == OptionType::Call ? "call" : "put", kSteps, r.price, bsm, rel);
+    EXPECT_LE(rel, 1e-4);
+  }
+}
+
 TEST(Crr, WorkspaceAndAllocatingOverloadsAgree) {
   const OptionSpec s = spec(OptionType::Put, 100, 105, 0.7, 0.03, 0.01, 0.3);
   std::vector<double> ws(1000, 123.0);  // stale contents must not matter

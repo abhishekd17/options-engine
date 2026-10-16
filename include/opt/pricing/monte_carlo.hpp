@@ -28,6 +28,7 @@
 #include "opt/pricing/types.hpp"
 
 #include <cstdint>
+#include <limits>
 
 namespace opt {
 
@@ -39,10 +40,10 @@ struct McConfig {
 };
 
 struct McResult {
-  double price;
-  double std_error;
-  std::uint64_t paths;  // simulated terminal values (both legs of each antithetic pair)
-  double beta;          // control-variate coefficient (0 when not used)
+  double price = std::numeric_limits<double>::quiet_NaN();
+  double std_error = std::numeric_limits<double>::quiet_NaN();
+  std::uint64_t paths = 0;  // simulated terminal values (both legs of each antithetic pair)
+  double beta = 0.0;        // control-variate coefficient (0 when not used)
 };
 
 [[nodiscard]] McResult mc_european(const OptionSpec& spec, const McConfig& config);

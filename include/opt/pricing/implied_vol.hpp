@@ -52,6 +52,7 @@
 #include "opt/pricing/types.hpp"
 
 #include <cstdint>
+#include <limits>
 
 namespace opt {
 
@@ -74,9 +75,9 @@ struct IvOptions {
 // carries the iterate with the smallest |f| seen (still not a valid answer).
 // iterations counts evaluations of the Black formula inside the Newton loop.
 struct IvResult {
-  double vol;
-  IvStatus status;
-  int iterations;
+  double vol = std::numeric_limits<double>::quiet_NaN();
+  IvStatus status = IvStatus::InvalidInput;
+  int iterations = 0;
 };
 
 // Black-76: price of a European option on a forward, discount = e^{-rT}.

@@ -50,10 +50,14 @@ void BM_MonteCarlo(benchmark::State& state) {
     benchmark::DoNotOptimize(r.price);
     se = r.std_error;
   }
-  state.counters["paths/s"] =
-      benchmark::Counter(static_cast<double>(kPaths), benchmark::Counter::kIsIterationInvariantRate);
+  state.counters["paths/s"] = benchmark::Counter(static_cast<double>(kPaths),
+                                                 benchmark::Counter::kIsIterationInvariantRate);
   state.counters["std_error"] = se;
 }
-BENCHMARK(BM_MonteCarlo)->ArgName("variance_reduction")->Arg(0)->Arg(1)->Unit(benchmark::kMillisecond);
+BENCHMARK(BM_MonteCarlo)
+    ->ArgName("variance_reduction")
+    ->Arg(0)
+    ->Arg(1)
+    ->Unit(benchmark::kMillisecond);
 
 }  // namespace

@@ -143,7 +143,8 @@ class LogLinearHistogram {
 
   // Calls f(low, high, count) for every non-empty bucket, lowest first.
   template <class F>
-  void for_each_bucket(F&& f) const {  // NOLINT(cppcoreguidelines-missing-std-forward): called per bucket
+  // NOLINTNEXTLINE(cppcoreguidelines-missing-std-forward): f is called once per bucket
+  void for_each_bucket(F&& f) const {
     for (std::size_t i = 0; i < kBuckets; ++i) {
       if (counts_[i] != 0) {
         f(bucket_low(i), bucket_high(i), counts_[i]);
