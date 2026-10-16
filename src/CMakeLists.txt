@@ -9,7 +9,8 @@ opteng_configure_target(opt_core)
 
 # Pricing core: BSM + Greeks, implied vol, CRR tree, Monte Carlo.
 # No third-party dependency.
-add_library(opt_pricing pricing/black_scholes.cpp pricing/implied_vol.cpp)
+add_library(opt_pricing pricing/black_scholes.cpp pricing/implied_vol.cpp pricing/binomial.cpp
+                        pricing/monte_carlo.cpp)
 add_library(opt::pricing ALIAS opt_pricing)
 target_link_libraries(opt_pricing PUBLIC opt::core)
 opteng_configure_target(opt_pricing)
