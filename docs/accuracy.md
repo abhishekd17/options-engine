@@ -314,3 +314,64 @@ AVX2 backend: an x86_64 build with `-mavx2 -mfma`, run under Rosetta 2 on the sa
 `[batch] Simd (avx2+fma, width 4) vs FastScalar: 0 of 1402149 outputs not bit-identical` with
 the same worst ratios (commands in `docs/part2-verification.md`). The threaded engine equals
 the SIMD engine bit for bit for 1, 2, 3 and 18 threads (`ThreadedPricer.EqualsSimdBitwise`).
+
+## SVI fit (Part 3)
+
+### Synthetic smiles
+
+From `./build/release/tests/opt_vol_tests --gtest_filter='SviFit.*'`. 41 points over k in
+[-1, 1], tau = 1:
+
+| True (a, b, rho, m, s) | Largest parameter error | RMSE (vol pts) | Iterations |
+|---|---|---|---|
+| (0.04, 0.10, -0.30, 0.00, 0.10) | 2.30e-12 (s) | 6.35e-12 | 292 |
+| (0.02, 0.20, -0.60, 0.10, 0.20) | 4.11e-15 (rho) | 4.66e-14 | 267 |
+| (0.01, 0.05, 0.20, -0.10, 0.30) | 4.49e-12 (s) | 5.99e-12 | 295 |
+| (0.10, 0.30, -0.90, 0.20, 0.05) | 1.01e-12 (s) | 5.86e-12 | 312 |
+
+With 0.1 vol point Gaussian noise added to each vol (seeded), the fitted RMSE is 0.0985,
+0.1018, 0.1046 and 0.1012 vol points: the fit absorbs no more than the noise. With one
++10 vol point outlier in 41 points, the error on the 40 clean points is 0.4450 vol points for
+plain least squares and 0.0617 for the Huber fit. Test thresholds: parameter error <= 1e-6,
+RMSE <= 1e-8 noise-free, noisy RMSE in [0.05, 0.2], Huber error < half the plain error.
+
+### Committed Deribit snapshot
+
+`./build/release/tools/vol_surface tests/data/deribit/BTC-20261017T123254Z --csv
+/tmp/oe-surface.csv` (full output in [part3-verification.md](part3-verification.md)). Fit
+points are OTM quotes with both sides, bid > 0 and a valid mid IV; 18OCT26 (0.81 days) is
+below the 1-day minimum and is not fitted. "Outside bid-ask" counts fit points whose fitted
+vol is below the bid IV or above the ask IV (from the CSV).
+
+| Expiry | Days | Points | RMSE (vol pts) | Max error (vol pts) | Outside bid-ask | Butterfly min g |
+|---|---|---|---|---|---|---|
+| 19OCT26 | 1.81 | 17 | 0.7844 | 1.8791 | 5 | 0.08682 |
+| 20OCT26 | 2.81 | 23 | 0.5064 | 1.1907 | 1 | 0.1492 |
+| 21OCT26 | 3.81 | 24 | 0.7376 | 2.8417 | 1 | 0.1364 |
+| 23OCT26 | 5.81 | 19 | 1.0629 | 3.5133 | 5 | 0.2038 |
+| 30OCT26 | 12.81 | 45 | 0.9657 | 5.2648 | 13 | 0.1932 |
+| 6NOV26 | 19.81 | 18 | 0.2156 | 0.5944 | 1 | 0.183 |
+| 27NOV26 | 40.81 | 48 | 0.5821 | 2.2295 | 19 | 0.2029 |
+
+All 7 fits have status Ok; mean RMSE 0.6935, max 1.0629 vol points. No butterfly, calendar or
+Lee violations (all 6 adjacent calendar pairs have min (w2 - w1) > 0; the largest wing slope
+b (1 - rho) is 0.110). 45 of the 194 fit points (23%) have a fitted vol outside their bid-ask
+range. The largest errors are far out-of-the-money calls (for example 30OCT26 K = 102,000:
+mid 47.56%, fit 42.30%), where the book is wide.
+
+### Known limitation: the a >= 0 bound
+
+Every fitted slice ends with a on its lower bound 0 (|a| < 1e-17). The Zeliade domain
+requires a >= 0, but raw SVI only needs the minimum total variance a + b s sqrt(1 - rho^2) to
+be non-negative, and BTC smiles want a < 0. The bound costs fit quality. A scratch experiment
+(not in the code: the a >= 0 row replaced by a lower bound of -max w) on the full 12-expiry
+raw chain lowered the RMSE on every expiry, for example 19OCT26 0.7844 -> 0.3715,
+23OCT26 1.0629 -> 0.4626 and 25DEC26 3.2690 -> 0.8274, and none of those fits had a butterfly
+violation or negative minimum variance. Relaxing the domain is a design change and is not
+made here.
+
+The raw full chain (12 expiries, not committed, so not reproducible offline) shows what the
+bound does at longer expiries: 25DEC26 fits with RMSE 3.2690 vol points (puts about 3.5 vol
+points too low and calls about 4 to 5 too high near the money), and the 25JUN27 -> 24SEP27
+pair has a calendar violation far in the left wing (min (w2 - w1) = -0.01631 at k = -1.535,
+39 of 401 grid points). The committed 8-expiry snapshot has neither.
