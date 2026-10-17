@@ -139,8 +139,178 @@ above; AS241 and norm_cdf were checked first and are implemented as published.
 
 ## Fast math error vs libm
 
-(Part 2.)
+`include/opt/core/fast_math.hpp` has the project's own exp, log and normal CDF/PDF. The
+FastScalar and Simd batch engines use them. They use only correctly rounded IEEE operations
+(+ - * / sqrt fma and bit casts), so every backend (scalar, NEON, AVX2, Emulated) gives the same
+bits. The reference is libm (`std::exp`, `std::log`) or the reference normal functions in
+`normal.hpp`. Those have about 1 ulp of error themselves, so the numbers below are errors
+"vs libm", not errors against the exact value.
+
+Command (10,000,000 seeded points per row plus edge points: range ends, both sides of every
+exp range-reduction boundary, the log sqrt(2) switch, and the CDF's 7.07 switch):
+
+```bash
+./build/release/tools/fast_math_error
+```
+
+Output:
+
+```
+fast_math_error: 10000000 random points per row (seed 1) plus edge points; simd backend neon; errors vs libm / reference normal
+fast_exp       uniform [-708, 709]        vs std::exp  points  10004096  max abs 9.979e+291 at x = 708.78542365627732       max rel 2.220e-16 at x = -145.5607060635341
+fast_log       log-uniform [1e-300, 1e300] vs std::log  points  10000011  max abs 2.220e-16 at x = 0.35299159119978979      max rel 3.814e-16 at x = 1.1566774495242427
+fast_norm_cdf  uniform [-38, 9]           vs norm_cdf  points  10000011  max abs 2.220e-16 at x = 0.66846289236038103      max rel 1.000e+00 at x = -38
+fast_norm_cdf  uniform [-37, -7.0710678]  vs norm_cdf  points  10000002  max abs 2.775e-21 at x = -7.0710681558250492      max rel 8.912e-09 at x = -7.784734481608357
+fast_norm_cdf  uniform [-7.0710678, 0]    vs norm_cdf  points  10000002  max abs 2.220e-16 at x = -0.18176062710308294     max rel 2.890e-09 at x = -7.0710678118654693
+fast_norm_cdf  uniform [0, 9]             vs norm_cdf  points  10000003  max abs 2.220e-16 at x = 0.20161786669984838      max rel 4.440e-16 at x = 0.00016549183849801086
+fast_norm_cdf  uniform [-38, -37]         vs norm_cdf  points  10000003  max abs 5.726e-300 at x = -37.000000000000007      max rel 1.000e+00 at x = -38
+fast_norm_pdf  uniform [-38, 38]          vs norm_pdf  points  10000003  max abs 5.551e-17 at x = 0.94988096460878779      max rel 6.038e-12 at x = 37.886361718107892
+fast_norm_inv  (1e-300, 1 - 1e-16)        vs AS241     points  10000005  max abs 6.217e-15 at x = 0.9999999999809337       max rel 9.404e-16 at x = 0.9999999999809337
+```
+
+How to read it:
+
+- `fast_exp`: worst relative error 2.22e-16, which is 1 eps (2^-52). The design target was 2
+  ulp. The absolute error is large only because e^709 is about 8e307.
+- `fast_log`: worst relative error 3.81e-16 (1.7 eps).
+- `fast_norm_cdf`: the absolute error is at most 2.22e-16 everywhere. The relative error is
+  small at and above the centre (4.4e-16 on [0, 9]) but grows in the lower tail, up to 8.9e-9
+  near x = -7.8. The next section explains why. Below -37 the function returns 0 by design
+  (West's cut-off) while N(-37) is about 6e-300, so the relative error there is 1 and the
+  absolute error is 5.7e-300.
+- `fast_norm_pdf`: 6.0e-12 relative at x = 37.9, because the density there (about 1e-312) is
+  subnormal and has few significant bits. Both sides compute the same argument
+  `(-0.5 * x) * x`, so this is the exp rounding on a subnormal result, not an argument error.
+- `fast_norm_inv` (AS241 with `fast_log`): 9.4e-16 relative.
+
+### Fast normal CDF: why the bound is absolute
+
+The design (section 4.1) expected `fast_norm_cdf` to be within 1e-14 + 2 x^2 eps relative on
+[-37, 0]. The implementation is Hart's algorithm 5666 exactly as G. West published it ("Better
+approximations to cumulative normal functions", Wilmott, 2005, figure 2; the coefficients were
+transcribed from the paper and checked against it). The measurement above shows that this
+algorithm is accurate in absolute terms (2.2e-16) but not in relative terms in the lower tail:
+2.9e-9 at the 7.07 switch point from the rational approximation, and 8.9e-9 near -7.8 from the
+short continued fraction. The published coefficients have 15 significant digits, so this is a
+property of the approximation, not a transcription bug.
+
+Following the design's 6.6 rule (record the measured value and the reason before changing a
+threshold), `tests/core/fast_math_test.cpp` asserts:
+
+| Row | Design 4.1 bound | Bound used | Measured by the test (1,000,000 points) |
+|---|---|---|---|
+| [-37, 0] absolute | (none) | 4.5e-16 | 1.943e-16 |
+| [-37, 0] relative | 1e-14 + 2 x^2 eps | 2e-8 | 8.912e-9 |
+| [-2, 0] relative | 1e-14 + 2 x^2 eps (on [-37, 0]) | 1e-14 + 2 x^2 eps | 1.755e-15 |
+| [0, 8.3] relative | 1e-14 | 1e-14 | 4.438e-16 |
+| [-38, -37] absolute | 1e-299 | 1e-299 | 5.726e-300 |
+| [8.3, 38] absolute vs 1 | 1e-15 | 1e-15 | 0 |
+
+The other rows keep the design's bounds: `fast_exp` relative 4 eps (measured 2.217e-16,
+err/bound 0.250), `fast_log` relative 4 eps, or absolute 4 eps where |ln x| < 1 (err/bound
+0.241), `fast_norm_inv` 1e-14 |ref| + 1e-15 (err/bound 0.083). Every backend (Emulated<4>,
+Emulated<8>, NEON) gives results bit-identical to the double version for `fast_exp`,
+`fast_log`, `fast_norm_cdf` and `fast_norm_pdf` (test `FastMathBackend.BitIdenticalToDouble`).
+
+Command and the lines the test prints:
+
+```bash
+./build/release/tests/opt_core_tests --gtest_filter='FastMath*'
+```
+
+```
+[fast_math] fast_exp [-708,709] rel vs std::exp      max abs 9.979e+291 (x=708.98684208681948)  max rel 2.217e-16 (x=618.28873678968421)  max err/bound 0.250
+[fast_math] fast_log [1e-300,1e300] vs std::log      max abs 2.220e-16 (x=0.35426814770297693)  max rel 3.650e-16 (x=1.3554648678025221)  max err/bound 0.241
+[fast_math] fast_norm_cdf [-37,0] abs vs norm_cdf    max abs 1.943e-16 (x=-0.67939151449192536)  max rel 8.912e-09 (x=-7.7850441652718594)  max err/bound 0.432
+[fast_math] fast_norm_cdf [-37,0] rel vs norm_cdf    max abs 1.665e-16 (x=-0.16744408802276212)  max rel 8.912e-09 (x=-7.7848323831889772)  max err/bound 0.446
+[fast_math] fast_norm_cdf [-2,0] rel vs norm_cdf     max abs 2.220e-16 (x=-0.67046733062232478)  max rel 1.755e-15 (x=-1.7559985730614593)  max err/bound 0.154
+[fast_math] fast_norm_cdf [0,8.3] rel vs norm_cdf    max abs 2.220e-16 (x=0.21796760778107141)  max rel 4.438e-16 (x=0.00076008152534593485)  max err/bound 0.044
+[fast_math] fast_norm_cdf [-38,-37] abs vs norm_cdf  max abs 5.726e-300 (x=-37.000000000000007)  max rel 1.000e+00 (x=-37.000000000000007)  max err/bound 0.573
+[fast_math] fast_norm_cdf [8.3,38] abs vs 1          max abs 0.000e+00 (x=0)  max rel 0.000e+00 (x=0)  max err/bound 0.000
+[fast_math] fast_norm_inv (1e-300,1-1e-16) vs AS241  max abs 3.553e-15 (x=0.99998664533225867)  max rel 8.459e-16 (x=0.99998664533225867)  max err/bound 0.083
+```
+
+What this means for prices: a price is a sum of terms like D K N(d2). An absolute error of
+2.2e-16 in N gives an absolute price error of about 2.2e-16 x D K, which is what the batch
+tolerances below allow. A deep out-of-the-money price (N about 1e-14) can therefore carry a
+relative error of about 1e-8. That is far below any bid-ask spread, but the fast engines should
+not be used to back out implied vols from prices as small as 1e-14 x spot.
 
 ## Batch engine tolerances
 
-(Part 2.)
+`tests/batch/engine_test.cpp` prices 200,003 seeded random options (not a multiple of 2, 4 or 8)
+plus 304 edge options with every engine and compares each output with the Reference engine (a
+loop over `bsm_price` / `bsm_greeks`): |fast - ref| <= atol + 1e-12 |ref|.
+
+The random options cover the batch domain: S log-uniform on [1e-8, 1e12], K = S e^u with u
+uniform on [-3, 3], T log-uniform on [1e-8, 100], sigma log-uniform on [1e-6, 10], r and q
+uniform on [-0.05, 0.15] for 80% of the options and on [-1, 1] for the rest. The edge options
+have T = 1e-8 and 1e-6, sigma = 1e-6 and 10, z = ln(F/K)/(sigma sqrt T) = +-8, +-37, +-38.5
+and +-40, F == K exactly, S and K at the domain ends, and irregular call/put patterns. Each
+engine also runs on sizes 0, 1, W-1, W, W+1 and 2W+3 (W = 2, 4, 8) at offsets 0, 1, 3 and 1001
+(unaligned sub-spans), and must not write outside the requested range.
+
+### atol: discounted scale instead of S and K
+
+Design 6.6 gave atol in units of S and K, for example price atol = 1e-14 (S + K). The first run
+failed by factors up to 4.9e5 on options with large |r T| or |q T|. One example: S = 394,
+K = 960, T = 38.6, r = -0.965, q = -0.923, where the discount factor e^{-rT} is 1.6e16. There a
+price is of the size of S e^{-qT} or K e^{-rT}, not S or K, and so is its rounding error. The
+test now uses the discounted spot S e^{-qT} and the discounted strike K e^{-rT} in every atol
+(they equal S and K when r = q = 0), and theta also gets 1e-14 of its carry terms
+|r| K e^{-rT} + |q| S e^{-qT}:
+
+| Output | Design 6.6 atol | atol used (S' = S e^{-qT}, K' = K e^{-rT}, Dq = e^{-qT}) |
+|---|---|---|
+| price | 1e-14 (S + K) | 1e-14 (S' + K') |
+| delta | 1e-14 | 1e-14 Dq |
+| gamma | 1e-12 / (S sigma sqrt T) | 1e-12 Dq / (S sigma sqrt T) |
+| vega | 1e-14 (S + K) sqrt T | 1e-14 (S' + K') sqrt T |
+| theta | 1e-12 S sigma / sqrt T | 1e-12 S' sigma / sqrt T + 1e-14 (\|r\| K' + \|q\| S') |
+| rho | 1e-14 K max(T, 1) | 1e-14 K' max(T, 1) |
+
+rtol stays 1e-12 for every output. With this scaling the worst error is under 5% of the
+tolerance for every output.
+
+Command and the lines the test prints:
+
+```bash
+./build/release/tests/opt_batch_tests --gtest_filter='BatchEngine.*:EmulatedKernel*'
+```
+
+```
+[batch] FastScalar greeks            price max err/tol 1.267e-02 (option 34014)
+[batch] FastScalar greeks            delta max err/tol 4.384e-02 (option 1325)
+[batch] FastScalar greeks            gamma max err/tol 1.832e-03 (option 1325)
+[batch] FastScalar greeks            vega  max err/tol 4.837e-02 (option 1325)
+[batch] FastScalar greeks            theta max err/tol 2.121e-02 (option 1325)
+[batch] FastScalar greeks            rho   max err/tol 4.421e-02 (option 1325)
+[batch] FastScalar price-only        price max err/tol 1.267e-02 (option 34014)
+[batch] Simd greeks                  price max err/tol 1.267e-02 (option 34014)
+[batch] Simd greeks                  delta max err/tol 4.384e-02 (option 1325)
+[batch] Simd greeks                  gamma max err/tol 1.832e-03 (option 1325)
+[batch] Simd greeks                  vega  max err/tol 4.837e-02 (option 1325)
+[batch] Simd greeks                  theta max err/tol 2.121e-02 (option 1325)
+[batch] Simd greeks                  rho   max err/tol 4.421e-02 (option 1325)
+[batch] Simd price-only              price max err/tol 1.267e-02 (option 34014)
+[batch] Simd (neon, width 2) vs FastScalar: 0 of 1402149 outputs not bit-identical
+[batch] Emulated<4>                  price max err/tol 1.267e-02 (option 34014)
+[batch] Emulated<4>                  delta max err/tol 4.384e-02 (option 1325)
+[batch] Emulated<4>                  gamma max err/tol 1.832e-03 (option 1325)
+[batch] Emulated<4>                  vega  max err/tol 4.837e-02 (option 1325)
+[batch] Emulated<4>                  theta max err/tol 2.121e-02 (option 1325)
+[batch] Emulated<4>                  rho   max err/tol 4.421e-02 (option 1325)
+[batch] Emulated<8>                  price max err/tol 1.267e-02 (option 34014)
+[batch] Emulated<8>                  delta max err/tol 4.384e-02 (option 1325)
+[batch] Emulated<8>                  gamma max err/tol 1.832e-03 (option 1325)
+[batch] Emulated<8>                  vega  max err/tol 4.837e-02 (option 1325)
+[batch] Emulated<8>                  theta max err/tol 2.121e-02 (option 1325)
+[batch] Emulated<8>                  rho   max err/tol 4.421e-02 (option 1325)
+```
+
+The SIMD engine's outputs are bit-identical to FastScalar: 0 of 1,402,149 outputs differ (the
+6 price+Greeks outputs plus the price-only output for 200,307 options). The same holds for the
+AVX2 backend: an x86_64 build with `-mavx2 -mfma`, run under Rosetta 2 on the same Mac, printed
+`[batch] Simd (avx2+fma, width 4) vs FastScalar: 0 of 1402149 outputs not bit-identical` with
+the same worst ratios (commands in `docs/part2-verification.md`). The threaded engine equals
+the SIMD engine bit for bit for 1, 2, 3 and 18 threads (`ThreadedPricer.EqualsSimdBitwise`).
