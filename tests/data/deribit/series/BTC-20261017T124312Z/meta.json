@@ -1,0 +1,11 @@
+{
+  "fetch_time_utc": "2026-10-17T12:43:12Z",
+  "currency": "BTC",
+  "script_version": "1",
+  "urls": {
+    "instruments": "https://www.deribit.com/api/v2/public/get_instruments?currency=BTC&kind=option&expired=false",
+    "book_summary": "https://www.deribit.com/api/v2/public/get_book_summary_by_currency?currency=BTC&kind=option",
+    "index_price": "https://www.deribit.com/api/v2/public/get_index_price?index_name=btc_usd"
+  },
+  "curl_version": "curl 8.7.1 (x86_64-apple-darwin25.0) libcurl/8.7.1 (SecureTransport) LibreSSL/3.3.6 zlib/1.2.12 nghttp2/1.68.1"
+}
