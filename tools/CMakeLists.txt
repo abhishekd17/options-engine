@@ -9,3 +9,7 @@ opteng_configure_target(opt_info)
 add_executable(iv_accuracy iv_accuracy.cpp)
 target_link_libraries(iv_accuracy PRIVATE opt::pricing opt_tool_args)
 opteng_configure_target(iv_accuracy)
+
+add_executable(fast_math_error fast_math_error.cpp)
+target_link_libraries(fast_math_error PRIVATE opt::core opt_tool_args)
+opteng_configure_target(fast_math_error)

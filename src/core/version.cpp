@@ -1,5 +1,7 @@
 #include "opt/core/version.hpp"
 
+#include "opt/simd/simd.hpp"
+
 #include <cstddef>
 #include <string_view>
 
@@ -9,30 +11,13 @@ std::string_view version() noexcept {
   return OPTENG_VERSION_STRING;
 }
 
-// Part 1 reports the backend from the same macros simd.hpp will use
-// (Part 2 switches this to opt::simd::kNativeWidth).
-#if defined(__AVX2__) && defined(__FMA__)
 std::string_view simd_backend_name() noexcept {
-  return "avx2+fma";
+  return simd::kNativeName;
 }
+
 std::size_t simd_width() noexcept {
-  return 4;
+  return simd::kNativeWidth;
 }
-#elif defined(__aarch64__)
-std::string_view simd_backend_name() noexcept {
-  return "neon";
-}
-std::size_t simd_width() noexcept {
-  return 2;
-}
-#else
-std::string_view simd_backend_name() noexcept {
-  return "scalar";
-}
-std::size_t simd_width() noexcept {
-  return 1;
-}
-#endif
 
 #define OPTENG_STR2(x) #x
 #define OPTENG_STR(x) OPTENG_STR2(x)

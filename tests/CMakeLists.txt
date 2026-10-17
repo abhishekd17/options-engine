@@ -18,13 +18,24 @@ opteng_add_test_exe(
   core/compensated_sum_test.cpp
   core/latency_histogram_test.cpp
   core/args_test.cpp
-  core/version_test.cpp)
+  core/version_test.cpp
+  core/simd_test.cpp
+  core/fast_math_test.cpp)
 target_link_libraries(opt_core_tests PRIVATE opt::core opt_tool_args)
 
 opteng_add_test_exe(
   opt_pricing_tests pricing/black_scholes_test.cpp pricing/implied_vol_test.cpp pricing/binomial_test.cpp
   pricing/monte_carlo_test.cpp)
 target_link_libraries(opt_pricing_tests PRIVATE opt::pricing)
+
+opteng_add_test_exe(opt_batch_tests batch/engine_test.cpp batch/thread_pool_test.cpp)
+target_link_libraries(opt_batch_tests PRIVATE opt::batch)
+
+# Replaces the global operator new/delete to count allocations, so it is a
+# separate executable: the replacement must not leak into the other tests.
+opteng_add_test_exe(opt_alloc_tests alloc_test.cpp)
+target_link_libraries(opt_alloc_tests PRIVATE opt::batch)
+target_include_directories(opt_alloc_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_test(NAME opt_info.runs COMMAND opt_info)
 set_tests_properties(
