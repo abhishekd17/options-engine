@@ -29,3 +29,16 @@ add_library(opt_batch batch/batch.cpp batch/thread_pool.cpp)
 add_library(opt::batch ALIAS opt_batch)
 target_link_libraries(opt_batch PUBLIC opt::pricing opt::simd Threads::Threads)
 opteng_configure_target(opt_batch)
+# Volatility layer: SVI, robust SVI fit, static-arbitrage checks, surface.
+# No third-party dependency.
+add_library(opt_vol vol/svi_fit.cpp vol/arbitrage.cpp vol/surface.cpp)
+add_library(opt::vol ALIAS opt_vol)
+target_link_libraries(opt_vol PUBLIC opt::pricing opt::core)
+opteng_configure_target(opt_vol)
+# Deribit snapshot loader plus the market implied vols of a snapshot
+# (vol/market_iv.cpp reads a deribit::Snapshot, so it is built here).
+# nlohmann/json is a private dependency: no public header includes it.
+add_library(opt_deribit deribit/snapshot.cpp vol/market_iv.cpp)
+add_library(opt::deribit ALIAS opt_deribit)
+target_link_libraries(opt_deribit PUBLIC opt::vol PRIVATE nlohmann_json::nlohmann_json)
+opteng_configure_target(opt_deribit)

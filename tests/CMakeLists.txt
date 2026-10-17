@@ -30,6 +30,12 @@ target_link_libraries(opt_pricing_tests PRIVATE opt::pricing)
 
 opteng_add_test_exe(opt_batch_tests batch/engine_test.cpp batch/thread_pool_test.cpp)
 target_link_libraries(opt_batch_tests PRIVATE opt::batch)
+opteng_add_test_exe(opt_vol_tests vol/svi_test.cpp vol/svi_fit_test.cpp vol/arbitrage_test.cpp
+                    vol/surface_test.cpp vol/snapshot_fit_test.cpp)
+# snapshot_fit_test reads the committed Deribit snapshot, so it needs the loader.
+target_link_libraries(opt_vol_tests PRIVATE opt::deribit)
+opteng_add_test_exe(opt_deribit_tests deribit/snapshot_test.cpp)
+target_link_libraries(opt_deribit_tests PRIVATE opt::deribit)
 
 # Replaces the global operator new/delete to count allocations, so it is a
 # separate executable: the replacement must not leak into the other tests.
@@ -42,3 +48,9 @@ set_tests_properties(
   opt_info.runs
   PROPERTIES PASS_REGULAR_EXPRESSION
              "options-engine ${PROJECT_VERSION}\nsimd backend: (neon|avx2\\+fma|scalar) \\(width [124]\\)")
+add_test(
+  NAME cli.vol_surface
+  COMMAND
+    ${CMAKE_COMMAND} -DVOL_SURFACE=$<TARGET_FILE:vol_surface>
+    -DDATA=${PROJECT_SOURCE_DIR}/tests/data/deribit -DWORK=${CMAKE_CURRENT_BINARY_DIR}/vol_surface_work
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/vol_surface_cli_test.cmake)
