@@ -1,4 +1,5 @@
-// Heap allocation counting for the batch engines (design 6.5).
+// Heap allocation counting for the batch engines (design 6.5) and the
+// synthetic market-maker simulation step (design 8.9).
 //
 // This file replaces the global operator new and delete for the whole test
 // executable (it is a separate executable for that reason; approach copied
@@ -10,6 +11,9 @@
 // A control test shows the counter is live: a plain `new` is counted, and so
 // is constructing a ThreadedPricer (its worker vector and threads).
 #include "opt/batch/batch.hpp"
+#include "opt/mm/config.hpp"
+#include "opt/mm/sim.hpp"
+#include "opt/mm/synthetic.hpp"
 
 #include <atomic>
 #include <cstddef>
@@ -168,6 +172,32 @@ TEST(Allocations, BatchEnginesAllocateNothing) {
     all.greeks(in, out);
   }
   EXPECT_EQ(count.stop(), 0U);
+}
+
+// Design 8.9: after a 10-step warm-up, 2,000 synthetic simulation steps
+// (generator + mark + attribution + quotes + fills + hedges) allocate
+// nothing. The window covers the in-run arbitrage guard at steps 1000 and
+// 2000.
+TEST(Allocations, SyntheticSimulationStepAllocatesNothing) {
+  opt::mm::SimConfig c;
+  c.steps = 2009;
+  opt::mm::SyntheticMarket market(c);
+  opt::mm::Simulator sim(c, opt::mm::synthetic_instruments(c));
+  for (int i = 0; i < 10; ++i) {
+    ASSERT_EQ(sim.step(market), opt::mm::SimStatus::Running);
+  }
+  std::uint64_t steps = 0;
+  {
+    CountAllocations count;
+    while (sim.step(market) == opt::mm::SimStatus::Running) {
+      ++steps;
+    }
+    EXPECT_EQ(count.stop(), 0U);
+  }
+  EXPECT_EQ(steps, 2000U);
+  EXPECT_EQ(market.step_index(), 2009U);
+  EXPECT_GT(sim.counters().bid_fills + sim.counters().ask_fills, 0U);
+  EXPECT_GT(sim.counters().hedges, 0U);
 }
 
 }  // namespace

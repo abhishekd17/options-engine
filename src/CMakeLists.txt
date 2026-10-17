@@ -42,3 +42,17 @@ add_library(opt_deribit deribit/snapshot.cpp vol/market_iv.cpp)
 add_library(opt::deribit ALIAS opt_deribit)
 target_link_libraries(opt_deribit PUBLIC opt::vol PRIVATE nlohmann_json::nlohmann_json)
 opteng_configure_target(opt_deribit)
+
+# Market maker: synthetic market, quoter, fill model, portfolio, hedger, PnL
+# attribution and the simulator. No JSON, no file I/O.
+add_library(opt_mm mm/synthetic.cpp mm/quoter.cpp mm/fill_model.cpp mm/portfolio.cpp
+                   mm/hedger.cpp mm/pnl.cpp mm/sim.cpp)
+add_library(opt::mm ALIAS opt_mm)
+target_link_libraries(opt_mm PUBLIC opt::batch opt::vol)
+opteng_configure_target(opt_mm)
+
+# Recorded market source: a series of Deribit snapshots fitted per step.
+add_library(opt_mm_recorded mm_recorded/recorded.cpp)
+add_library(opt::mm_recorded ALIAS opt_mm_recorded)
+target_link_libraries(opt_mm_recorded PUBLIC opt::mm opt::deribit)
+opteng_configure_target(opt_mm_recorded)

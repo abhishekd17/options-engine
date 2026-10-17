@@ -16,3 +16,7 @@ opteng_configure_target(vol_surface)
 add_executable(fast_math_error fast_math_error.cpp)
 target_link_libraries(fast_math_error PRIVATE opt::core opt_tool_args)
 opteng_configure_target(fast_math_error)
+
+add_executable(mm_sim mm_sim.cpp)
+target_link_libraries(mm_sim PRIVATE opt::mm_recorded opt_tool_args)
+opteng_configure_target(mm_sim)

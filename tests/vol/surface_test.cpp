@@ -77,5 +77,6 @@ TEST(VolSurface, ConstructorValidates) {
   EXPECT_TRUE(make_surface().validate_order());
 }
 // The "validate_order() true after 10,000 synthetic-generator steps" check of
-// design 7.9 needs the Part 4 generator and is added with it.
+// design 7.9 needs the Part 4 generator; it is in
+// tests/mm/synthetic_test.cpp (Synthetic.DefaultSmileHasNoStaticArbitrage).
 }  // namespace

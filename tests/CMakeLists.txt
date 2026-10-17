@@ -37,10 +37,25 @@ target_link_libraries(opt_vol_tests PRIVATE opt::deribit)
 opteng_add_test_exe(opt_deribit_tests deribit/snapshot_test.cpp)
 target_link_libraries(opt_deribit_tests PRIVATE opt::deribit)
 
+opteng_add_test_exe(
+  opt_mm_tests
+  mm/golden_test.cpp
+  mm/quoter_test.cpp
+  mm/limits_test.cpp
+  mm/hedger_test.cpp
+  mm/pnl_test.cpp
+  mm/fill_model_test.cpp
+  mm/recorded_test.cpp
+  mm/synthetic_test.cpp)
+target_link_libraries(opt_mm_tests PRIVATE opt::mm_recorded)
+target_include_directories(opt_mm_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
 # Replaces the global operator new/delete to count allocations, so it is a
 # separate executable: the replacement must not leak into the other tests.
 opteng_add_test_exe(opt_alloc_tests alloc_test.cpp)
-target_link_libraries(opt_alloc_tests PRIVATE opt::batch)
+# opt::mm links opt::batch publicly; naming both makes Apple ld warn about a
+# duplicate library.
+target_link_libraries(opt_alloc_tests PRIVATE opt::mm)
 target_include_directories(opt_alloc_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_test(NAME opt_info.runs COMMAND opt_info)
@@ -54,3 +69,9 @@ add_test(
     ${CMAKE_COMMAND} -DVOL_SURFACE=$<TARGET_FILE:vol_surface>
     -DDATA=${PROJECT_SOURCE_DIR}/tests/data/deribit -DWORK=${CMAKE_CURRENT_BINARY_DIR}/vol_surface_work
     -P ${CMAKE_CURRENT_SOURCE_DIR}/vol_surface_cli_test.cmake)
+
+add_test(
+  NAME cli.mm_sim
+  COMMAND
+    ${CMAKE_COMMAND} -DMM_SIM=$<TARGET_FILE:mm_sim> -DSERIES=${PROJECT_SOURCE_DIR}/tests/data/deribit/series
+    -DWORK=${CMAKE_CURRENT_BINARY_DIR}/mm_sim_work -P ${CMAKE_CURRENT_SOURCE_DIR}/mm_sim_cli_test.cmake)
